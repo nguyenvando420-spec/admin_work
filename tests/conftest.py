@@ -60,13 +60,26 @@ def setup_test_data(db_session):
     
     p_view = Permission(resource_id=res_job.id, action_code="view")
     p_fore = Permission(resource_id=res_job.id, action_code="fore")
-    db_session.add_all([p_view, p_fore])
+    
+    # Setup admin resources
+    res_user_admin = Resource(resource_code="user_admin", resource_name="User Admin")
+    res_role_admin = Resource(resource_code="role_admin", resource_name="Role Admin")
+    db_session.add_all([res_user_admin, res_role_admin])
+    db_session.commit()
+    
+    p_user_view = Permission(resource_id=res_user_admin.id, action_code="view")
+    p_user_fore = Permission(resource_id=res_user_admin.id, action_code="fore")
+    p_role_view = Permission(resource_id=res_role_admin.id, action_code="view")
+    p_role_fore = Permission(resource_id=res_role_admin.id, action_code="fore")
+    
+    db_session.add_all([p_view, p_fore, p_user_view, p_user_fore, p_role_view, p_role_fore])
     db_session.commit()
     
     # Assign permissions
     r_viewer.permissions.append(p_view)
     r_operator.permissions.extend([p_view, p_fore])
     r_bad_operator.permissions.append(p_fore) # Only fore, no view
+    r_admin.permissions.extend([p_user_view, p_user_fore, p_role_view, p_role_fore])
     db_session.commit()
     
     # Setup users
@@ -81,7 +94,16 @@ def setup_test_data(db_session):
     u_operator.roles.append(r_operator)
     u_bad_op.roles.append(r_bad_operator)
     
-    db_session.add_all([u_admin, u_viewer, u_operator, u_bad_op, u_no_roles])
+    from datetime import datetime, timedelta
+    old_time = datetime.now() - timedelta(days=31)
+    u_expired = User(
+        username="user_expired", 
+        password_hash=get_password_hash("testpass"), 
+        status="ACTIVE",
+        password_updated_at=old_time
+    )
+    
+    db_session.add_all([u_admin, u_viewer, u_operator, u_bad_op, u_no_roles, u_expired])
     db_session.commit()
     
     return {
