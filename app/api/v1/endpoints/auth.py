@@ -7,9 +7,11 @@ from app.core import security
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
+from app.models.token_blacklist import TokenBlacklist
 from app.schemas.token import Token
 from app.schemas.user import UserResponse
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_user, oauth2_scheme
+from jose import jwt
 
 from datetime import datetime, timedelta
 from pydantic import BaseModel
@@ -65,6 +67,29 @@ def change_password(
     db.commit()
     
     return {"message": "Password updated successfully"}
+
+@router.post("/logout")
+def logout(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Log out and blacklist the current token.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        exp = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp)
+        
+        blacklisted_token = TokenBlacklist(token=token, expires_at=expires_at)
+        db.add(blacklisted_token)
+        db.commit()
+    except Exception:
+        # If token is invalid or can't be decoded, we don't need to blacklist it
+        pass
+    
+    return {"message": "Successfully logged out"}
 
 @router.get("/me", response_model=UserResponse)
 def read_user_me(
