@@ -1,6 +1,5 @@
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core import security
@@ -23,15 +22,19 @@ class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 @router.post("/login", response_model=Token)
 def login_access_token(
-    db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+    data: LoginRequest, db: Session = Depends(get_db)
 ) -> Any:
     """
-    OAuth2 compatible token login, get an access token for future requests
+    Login, get an access token for future requests
     """
-    user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
+    user = db.query(User).filter(User.username == data.username).first()
+    if not user or not security.verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     elif not user.is_active:
         raise HTTPException(status_code=401, detail="Inactive user")

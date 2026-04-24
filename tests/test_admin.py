@@ -1,6 +1,6 @@
 def test_list_users(client, setup_test_data):
     # Login as admin
-    resp = client.post("/api/v1/auth/login", data={"username": "admin", "password": "Admin@123"})
+    resp = client.post("/api/v1/auth/login", json={"username": "admin", "password": "Admin@123"})
     token = resp.json()["access_token"]
     
     # List users
@@ -10,7 +10,7 @@ def test_list_users(client, setup_test_data):
 
 def test_create_user(client, setup_test_data):
     # Login as admin
-    resp = client.post("/api/v1/auth/login", data={"username": "admin", "password": "Admin@123"})
+    resp = client.post("/api/v1/auth/login", json={"username": "admin", "password": "Admin@123"})
     token = resp.json()["access_token"]
     
     # Create new user
@@ -25,12 +25,12 @@ def test_create_user(client, setup_test_data):
     assert resp_create.status_code == 200
     
     # Verify new user can login
-    resp_login = client.post("/api/v1/auth/login", data={"username": "newuser", "password": "password123"})
+    resp_login = client.post("/api/v1/auth/login", json={"username": "newuser", "password": "password123"})
     assert resp_login.status_code == 200
 
 def test_update_role_permissions_rule(client, setup_test_data):
     # Login as admin
-    resp = client.post("/api/v1/auth/login", data={"username": "admin", "password": "Admin@123"})
+    resp = client.post("/api/v1/auth/login", json={"username": "admin", "password": "Admin@123"})
     token = resp.json()["access_token"]
     
     # Try to set fore=True but view=False (should fail 400)
@@ -53,7 +53,7 @@ def test_update_role_permissions_rule(client, setup_test_data):
 
 def test_update_role_permissions_success(client, setup_test_data):
     # Login as admin
-    resp = client.post("/api/v1/auth/login", data={"username": "admin", "password": "Admin@123"})
+    resp = client.post("/api/v1/auth/login", json={"username": "admin", "password": "Admin@123"})
     token = resp.json()["access_token"]
     
     # Update viewer to have fore permission
@@ -74,7 +74,7 @@ def test_update_role_permissions_success(client, setup_test_data):
     assert resp_update.status_code == 200
     
     # Verify viewer now has fore permission (login as viewer)
-    resp_v = client.post("/api/v1/auth/login", data={"username": "user_view", "password": setup_test_data["pass"]})
+    resp_v = client.post("/api/v1/auth/login", json={"username": "user_view", "password": setup_test_data["pass"]})
     token_v = resp_v.json()["access_token"]
     
     resp_run = client.post("/api/v1/job-monitor/run", headers={"Authorization": f"Bearer {token_v}"})
