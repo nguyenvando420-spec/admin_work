@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -10,11 +10,12 @@ from app.models.user import User
 from app.models.token_blacklist import TokenBlacklist
 from app.schemas.token import TokenPayload
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{config.settings.API_V1_STR}/auth/login")
+security_scheme = HTTPBearer()
 
 def get_current_user(
-    db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
+    db: Session = Depends(get_db), auth: HTTPAuthorizationCredentials = Depends(security_scheme)
 ) -> User:
+    token = auth.credentials
     # Check if token is blacklisted
     blacklisted = db.query(TokenBlacklist).filter(TokenBlacklist.token == token).first()
     if blacklisted:
@@ -37,13 +38,13 @@ def get_current_user(
     user = db.query(User).filter(User.id == token_data.sub).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    if user.status != "ACTIVE":
+    if not user.is_active:
         raise HTTPException(status_code=401, detail="Inactive user")
     return user
 
 def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    if current_user.status != "ACTIVE":
+    if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user

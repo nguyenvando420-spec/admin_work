@@ -23,9 +23,9 @@ def create_user(
     user = User(
         username=user_in.username,
         email=user_in.email,
-        full_name=user_in.full_name,
-        password_hash=get_password_hash(user_in.password),
-        status="ACTIVE",
+        name=user_in.name,
+        hashed_password=get_password_hash(user_in.password),
+        is_active=True,
     )
     db.add(user)
     
@@ -41,8 +41,8 @@ def create_user(
         "id": user.id,
         "username": user.username,
         "email": user.email,
-        "full_name": user.full_name,
-        "status": user.status,
+        "name": user.name,
+        "is_active": user.is_active,
         "roleCodes": roleCodes
     }
 
@@ -60,8 +60,8 @@ def read_users(
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "full_name": user.full_name,
-            "status": user.status,
+            "name": user.name,
+            "is_active": user.is_active,
             "roleCodes": roleCodes
         })
     return results

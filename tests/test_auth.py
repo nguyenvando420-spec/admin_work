@@ -15,7 +15,7 @@ def test_login_wrong_password(client, setup_test_data):
     
 def test_access_without_token(client):
     response = client.get("/api/v1/auth/me")
-    assert response.status_code == 401
+    assert response.status_code == 403  # HTTPBearer returns 403 for missing credentials by default
 
 def test_invalid_token(client):
     response = client.get(

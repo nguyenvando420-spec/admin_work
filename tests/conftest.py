@@ -83,11 +83,11 @@ def setup_test_data(db_session):
     db_session.commit()
     
     # Setup users
-    u_admin = User(username="admin", password_hash=get_password_hash("Admin@123"), status="ACTIVE", is_superuser=True)
-    u_viewer = User(username="user_view", password_hash=get_password_hash("testpass"), status="ACTIVE")
-    u_operator = User(username="user_op", password_hash=get_password_hash("testpass"), status="ACTIVE")
-    u_bad_op = User(username="user_bad_op", password_hash=get_password_hash("testpass"), status="ACTIVE")
-    u_no_roles = User(username="user_noroles", password_hash=get_password_hash("testpass"), status="ACTIVE")
+    u_admin = User(username="admin", hashed_password=get_password_hash("Admin@123"), is_active=True, is_superuser=True)
+    u_viewer = User(username="user_view", hashed_password=get_password_hash("testpass"), is_active=True)
+    u_operator = User(username="user_op", hashed_password=get_password_hash("testpass"), is_active=True)
+    u_bad_op = User(username="user_bad_op", hashed_password=get_password_hash("testpass"), is_active=True)
+    u_no_roles = User(username="user_noroles", hashed_password=get_password_hash("testpass"), is_active=True)
     
     u_admin.roles.append(r_admin)
     u_viewer.roles.append(r_viewer)
@@ -98,8 +98,8 @@ def setup_test_data(db_session):
     old_time = datetime.now() - timedelta(days=31)
     u_expired = User(
         username="user_expired", 
-        password_hash=get_password_hash("testpass"), 
-        status="ACTIVE",
+        hashed_password=get_password_hash("testpass"), 
+        is_active=True,
         password_updated_at=old_time
     )
     

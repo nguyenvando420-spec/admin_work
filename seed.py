@@ -80,12 +80,12 @@ def seed_data():
     if not admin_user:
         admin_user = User(
             username=settings.FIRST_SUPERUSER_USERNAME,
-            full_name="Initial System Admin",
+            name="Initial System Admin",
             email=settings.FIRST_SUPERUSER_EMAIL,
-            password_hash=get_password_hash(settings.FIRST_SUPERUSER_PASSWORD),
+            hashed_password=get_password_hash(settings.FIRST_SUPERUSER_PASSWORD),
             password_updated_at=func.now(),
             is_superuser=True,
-            status="ACTIVE"
+            is_active=True
         )
         db.add(admin_user)
         db.commit()
@@ -93,7 +93,7 @@ def seed_data():
     else:
         # Update existing admin from env if needed (Upsert logic)
         admin_user.email = settings.FIRST_SUPERUSER_EMAIL
-        admin_user.password_hash = get_password_hash(settings.FIRST_SUPERUSER_PASSWORD)
+        admin_user.hashed_password = get_password_hash(settings.FIRST_SUPERUSER_PASSWORD)
         admin_user.password_updated_at = func.now()
         db.commit()
         

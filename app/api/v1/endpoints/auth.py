@@ -10,7 +10,8 @@ from app.models.user import User
 from app.models.token_blacklist import TokenBlacklist
 from app.schemas.token import Token
 from app.schemas.user import UserResponse
-from app.dependencies.auth import get_current_user, oauth2_scheme
+from app.dependencies.auth import get_current_user, security_scheme
+from fastapi.security import HTTPAuthorizationCredentials
 from jose import jwt
 
 from datetime import datetime, timedelta
@@ -30,9 +31,9 @@ def login_access_token(
     OAuth2 compatible token login, get an access token for future requests
     """
     user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not security.verify_password(form_data.password, user.password_hash):
+    if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
-    elif user.status != "ACTIVE":
+    elif not user.is_active:
         raise HTTPException(status_code=401, detail="Inactive user")
         
     # Check if password needs update (30 days)
@@ -59,10 +60,10 @@ def change_password(
     """
     Change password.
     """
-    if not security.verify_password(data.old_password, current_user.password_hash):
+    if not security.verify_password(data.old_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect old password")
     
-    current_user.password_hash = security.get_password_hash(data.new_password)
+    current_user.hashed_password = security.get_password_hash(data.new_password)
     current_user.password_updated_at = datetime.now()
     db.commit()
     
@@ -71,12 +72,13 @@ def change_password(
 @router.post("/logout")
 def logout(
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    auth: HTTPAuthorizationCredentials = Depends(security_scheme),
     current_user: User = Depends(get_current_user)
 ) -> Any:
     """
     Log out and blacklist the current token.
     """
+    token = auth.credentials
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         exp = payload.get("exp")
@@ -102,8 +104,8 @@ def read_user_me(
     return {
         "id": current_user.id,
         "username": current_user.username,
-        "full_name": current_user.full_name,
+        "name": current_user.name,
         "email": current_user.email,
-        "status": current_user.status,
+        "is_active": current_user.is_active,
         "roleCodes": roleCodes
     }

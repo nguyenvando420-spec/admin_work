@@ -4,8 +4,8 @@ from pydantic import BaseModel, EmailStr
 class UserBase(BaseModel):
     username: str
     email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    status: str = "ACTIVE"
+    name: Optional[str] = None
+    is_active: bool = True
 
 class UserCreate(UserBase):
     password: str
@@ -21,4 +21,4 @@ class UserResponse(UserBase):
 class UserInDB(UserBase):
     id: int
     is_superuser: bool
-    password_hash: str
+    hashed_password: str

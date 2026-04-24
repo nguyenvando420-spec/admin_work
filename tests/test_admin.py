@@ -18,7 +18,7 @@ def test_create_user(client, setup_test_data):
         "username": "newuser",
         "email": "newuser@example.com",
         "password": "password123",
-        "full_name": "New User",
+        "name": "New User",
         "roleCodes": ["viewer"]
     }
     resp_create = client.post("/api/v1/admin/users", headers={"Authorization": f"Bearer {token}"}, json=user_data)
