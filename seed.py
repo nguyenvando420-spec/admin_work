@@ -68,13 +68,12 @@ def seed_data():
             db.commit()
             db.refresh(role)
             
-            # If super_admin, assign all permissions
-            if code == "super_admin":
-                all_perms = db.query(Permission).all()
-                for p in all_perms:
-                    role.permissions.append(p)
-                db.commit()
-                
+        # If super_admin, ensure it has ALL permissions
+        if code == "super_admin":
+            all_perms = db.query(Permission).all()
+            role.permissions = all_perms
+            db.commit()
+
     # 3. Super admin user
     admin_user = db.query(User).filter(User.username == settings.FIRST_SUPERUSER_USERNAME).first()
     if not admin_user:
@@ -98,9 +97,10 @@ def seed_data():
         db.commit()
         
     super_admin_role = db.query(Role).filter(Role.role_code == "super_admin").first()
-    if super_admin_role and super_admin_role not in admin_user.roles:
-        admin_user.roles.append(super_admin_role)
-        db.commit()
+    if super_admin_role:
+        if not any(r.role_code == "super_admin" for r in admin_user.roles):
+            admin_user.roles.append(super_admin_role)
+            db.commit()
 
     print(f"Database seeded successfully with superuser: {settings.FIRST_SUPERUSER_USERNAME}")
 
