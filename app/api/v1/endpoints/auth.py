@@ -1,19 +1,16 @@
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core import security
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
-from app.models.token_blacklist import TokenBlacklist
 from app.schemas.token import Token
 from app.schemas.user import UserResponse
 from app.dependencies.auth import get_current_user, security_scheme
+from app.core.cache import add_token, remove_token
 from fastapi.security import HTTPAuthorizationCredentials
-from jose import jwt
-
-from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -31,28 +28,37 @@ def login_access_token(
     data: LoginRequest, db: Session = Depends(get_db)
 ) -> Any:
     """
-    Login, get an access token for future requests
+    Login, lấy access token và lưu vào cache.
     """
     user = db.query(User).filter(User.username == data.username).first()
     if not user or not security.verify_password(data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
+        raise HTTPException(status_code=401, detail="Tài khoản hoặc mật khẩu không chính xác")
     elif not user.is_active:
-        raise HTTPException(status_code=401, detail="Inactive user")
+        raise HTTPException(status_code=401, detail="Tài khoản đã bị khóa")
         
-    # Check if password needs update (30 days)
-    need_change = False
-    if user.password_updated_at:
-        if datetime.now() - user.password_updated_at > timedelta(days=30):
-            need_change = True
-
     access_token = security.create_access_token(user.id)
+    
+    # Lưu token vào cache
+    add_token(access_token)
+    
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "need_change_password": need_change,
         "user": {"id": user.id, "username": user.username}
     }
+
+@router.post("/logout")
+def logout(
+    auth: HTTPAuthorizationCredentials = Depends(security_scheme),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Đăng xuất và xóa token khỏi cache.
+    """
+    token = auth.credentials
+    remove_token(token)
+    return {"message": "Đăng xuất thành công"}
 
 @router.post("/change-password")
 def change_password(
@@ -61,54 +67,21 @@ def change_password(
     db: Session = Depends(get_db)
 ) -> Any:
     """
-    Change password.
+    Đổi mật khẩu.
     """
     if not security.verify_password(data.old_password, current_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect old password")
+        raise HTTPException(status_code=400, detail="Mật khẩu cũ không chính xác")
     
     current_user.hashed_password = security.get_password_hash(data.new_password)
-    current_user.password_updated_at = datetime.now()
     db.commit()
     
-    return {"message": "Password updated successfully"}
-
-@router.post("/logout")
-def logout(
-    db: Session = Depends(get_db),
-    auth: HTTPAuthorizationCredentials = Depends(security_scheme),
-    current_user: User = Depends(get_current_user)
-) -> Any:
-    """
-    Log out and blacklist the current token.
-    """
-    token = auth.credentials
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        exp = payload.get("exp")
-        expires_at = datetime.fromtimestamp(exp)
-        
-        blacklisted_token = TokenBlacklist(token=token, expires_at=expires_at)
-        db.add(blacklisted_token)
-        db.commit()
-    except Exception:
-        # If token is invalid or can't be decoded, we don't need to blacklist it
-        pass
-    
-    return {"message": "Successfully logged out"}
+    return {"message": "Cập nhật mật khẩu thành công"}
 
 @router.get("/me", response_model=UserResponse)
 def read_user_me(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """
-    Get current user.
+    Lấy thông tin user hiện tại.
     """
-    roleCodes = [role.role_code for role in current_user.roles] if hasattr(current_user, 'roles') else []
-    return {
-        "id": current_user.id,
-        "username": current_user.username,
-        "name": current_user.name,
-        "email": current_user.email,
-        "is_active": current_user.is_active,
-        "roleCodes": roleCodes
-    }
+    return current_user

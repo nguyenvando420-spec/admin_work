@@ -1,6 +1,11 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
-from sqlalchemy.orm import relationship
+import enum
+from sqlalchemy import Column, Integer, String, Boolean, JSON, Enum
 from app.db.base_class import Base
+
+class UserRole(str, enum.Enum):
+    admin = "admin"
+    operator = "operator"
+    viewer = "viewer"
 
 class User(Base):
     __tablename__ = "users"
@@ -8,13 +13,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(100), unique=True, index=True, nullable=False)
     name = Column(String(255))
-    email = Column(String(255), unique=True, index=True)
     hashed_password = Column(String(255), nullable=False)
-    password_updated_at = Column(DateTime, default=func.now(), nullable=False)
-    is_superuser = Column(Boolean, default=False, nullable=False)
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.viewer)
+    permission = Column(JSON, default=[], nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    last_login_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-
-    roles = relationship("Role", secondary="user_roles", back_populates="users")

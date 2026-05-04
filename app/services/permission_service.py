@@ -1,41 +1,20 @@
-from app.models.user import User
+from app.models.user import User, UserRole
 
 def load_effective_permissions(user: User):
     """
-    Returns a dictionary of effective permissions for a user based on their roles.
-    Format: {"resource_code": {"view": bool, "fore": bool, "effectiveFore": bool}}
+    Trả về danh sách quyền hiệu dụng của user.
+    Admin có toàn quyền.
     """
-    permissions_map = {}
+    if user.role == UserRole.admin:
+        return ["*"] # Toàn quyền
     
-    # Collect all permissions from all roles
-    if hasattr(user, 'roles'):
-        for role in user.roles:
-            if not role.is_active:
-                continue
-            for perm in role.permissions:
-                res_code = perm.resource.resource_code
-                action = perm.action_code
-                
-                if res_code not in permissions_map:
-                    permissions_map[res_code] = {"view": False, "fore": False}
-                    
-                permissions_map[res_code][action] = True
-            
-    # Calculate effectiveFore = view AND fore
-    for res_code, perms in permissions_map.items():
-        perms["effectiveFore"] = perms["view"] and perms["fore"]
-        
-    return permissions_map
+    return user.permission or []
 
-def has_permission(user_permissions: dict, resource_code: str, action: str) -> bool:
-    res_perms = user_permissions.get(resource_code)
-    if not res_perms:
-        return False
-        
-    if action == "view":
-        return res_perms.get("view", False)
-        
-    if action == "fore":
-        return res_perms.get("effectiveFore", False)
-        
-    return False
+def has_permission(user_permissions: list, required_permission: str) -> bool:
+    """
+    Kiểm tra xem user có quyền cụ thể nào đó không.
+    """
+    if "*" in user_permissions:
+        return True
+    
+    return required_permission in user_permissions
